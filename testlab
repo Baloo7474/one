@@ -1,0 +1,113 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app-deployment
+spec:
+  replicas: 4 # Количество реплик, основываясь на результатах нагрузочных тестов
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+      - name: my-app-container
+        image: myregistry/myapp:v1.0.0 # Указываем образ приложения
+        resources:
+          requests:
+            cpu: 100m # Запрашиваемое значение CPU, чтобы гарантировать минимальное выделение ресурсов
+            memory: 64Mi # Запрашиваемая память, чуть меньше чем среднее потребление
+          limits:
+            cpu: 200m # Ограничение на использование CPU, чтобы избежать чрезмерного использования
+            memory: 256Mi # Ограничение на использование памяти, чуть выше среднего потребления
+        readinessProbe: # Проверка готовности приложения перед направлением трафика
+          httpGet:
+            path: /healthz # Путь для проверки состояния приложения
+            port: 8080
+          initialDelaySeconds: 5 # Задержка перед первой проверкой
+          periodSeconds: 5 # Интервал между проверками
+          failureThreshold: 6 # Максимальное число неудачных проверок перед тем, как считать контейнер неуспешным
+        livenessProbe: # Проверка жизнеспособности контейнера
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 15 # Задержка перед первой проверкой
+          periodSeconds: 20 # Интервал между проверками
+          failureThreshold: 3 # Максимальное число неудачных проверок перед перезапуском контейнераapiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app-deployment
+spec:
+  replicas: 4 # Количество реплик, основываясь на результатах нагрузочных тестов
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+      - name: my-app-container
+        image: myregistry/myapp:v1.0.0 # Указываем образ приложения
+        resources:
+          requests:
+            cpu: 100m # Запрашиваемое значение CPU, чтобы гарантировать минимальное выделение ресурсов
+            memory: 64Mi # Запрашиваемая память, чуть меньше чем среднее потребление
+          limits:
+            cpu: 200m # Ограничение на использование CPU, чтобы избежать чрезмерного использования
+            memory: 256Mi # Ограничение на использование памяти, чуть выше среднего потребления
+        readinessProbe: # Проверка готовности приложения перед направлением трафика
+          httpGet:
+            path: /healthz # Путь для проверки состояния приложения
+            port: 8080
+          initialDelaySeconds: 5 # Задержка перед первой проверкой
+          periodSeconds: 5 # Интервал между проверками
+          failureThreshold: 6 # Максимальное число неудачных проверок перед тем, как считать контейнер неуспешным
+        livenessProbe: # Проверка жизнеспособности контейнера
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 15 # Задержка перед первой проверкой
+          periodSeconds: 20 # Интервал между проверками
+          failureThreshold: 3 # Максимальное число неудачных проверок перед перезапуском контейнера
+
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: my-app-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: my-app-deployment
+  minReplicas: 2 # Минимальное количество реплик
+  maxReplicas: 8 # Максимальное количество реплик
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50 # Масштабируем, когда средняя загрузка CPU достигает 50%
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: AverageValue
+        averageValue: 150Mi # Масштабируем, когда средняя загруженность памяти превышает 150 MiB
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-app-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: my-app
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080
